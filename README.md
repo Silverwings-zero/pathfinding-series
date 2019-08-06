@@ -2,6 +2,8 @@
 pathplanning method for robotic arm with 6 DOF with classic algorithms RRT and PRM
 The file named rrtComplied.py was used to evaluate the performance of three rrt-related algorithms towards the same test set. 
 
+*Note that these algorithms runs on docker which i personally have access to*
+
 The three algorithms are respectively:
 RRT_connect
 RRT_Modified
