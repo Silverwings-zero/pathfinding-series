@@ -85,8 +85,8 @@ def Connected(a, b):
         return False
 
 prob = 0.3
-steplength = 0.4
-Threshold = 0.41
+steplength = 0.1
+Threshold = 0.11
 robot = Robot_model( "/root/mpl_example/mechmind_abb_model.rbt" )
 arm1_group = movegroup(robot, 'tool0')
 ctrl_arm1_joints = arm1_group.ctrlable_joints()
@@ -147,13 +147,22 @@ def printpath(a):
     k.reverse()
     return k
 
+"""[summary]
+PRM creates a map to navigate in a space by randomly generating points
 
-def PRM(nodeList, numPoint, checkradius):
+Arguments:
+    nodelist {[list]}  -- [a list of nodes intended to store the generated nodes]
+    numPoint {[int]}  -- [number of points to generate]
+    checknum {[int]}  -- [how many points that one point will treat as neighbor]
+
+Returns:
+"""
+def PRM(nodeList, numPoint, checknum):
     #setup PRM map
     for i in range(0, numPoint):
         nodeList.append(Sample())
     for i in nodeList:     
-        w = kNearest(i, nodeList, checkradius)
+        w = kNearest(i, nodeList, checknum)
         for j in w:
             if not(i.isCollidingPath(j)):
                 i.Connect(j)  
@@ -182,11 +191,12 @@ def steps_normalization(nodelist, steplength):
             k = int(nodelist[i].dist(nodelist[i+1])/steplength)
             t = nodelist[i]
             for j in range(k):
-                t = t.Extend(nodelist[i+1])
-                temp.append(t)
+                if t is not None:
+                    t = t.Extend(nodelist[i+1])
+                    temp.append(t)
             result += temp
-
     return result
+
 def lowestFcost(list):
     currentIndex = 0
     currentVal = list[currentIndex].Fcost
@@ -198,6 +208,18 @@ def lowestFcost(list):
 
 
 def rrt_m(a, b, maxTrial):
+    """[summary]
+    similar with rrt, but it goes towards to exploring nodes until it is no longer traversable
+
+    Arguments:
+        a {[list]}  -- [a list of six doubles to represent the coordinate of the Node]
+        b {[list]}  -- [a list of six doubles to represent the coordinate of the Node]
+        maxTrial {[int]}  -- [maximum iterations will be executed before determines the pathfinding to be unproductive]
+
+    Returns:
+        [list] -- [the path node went through from starting point to endpoint represented as lists]
+        [boolean] -- [whether the pathfinding is productive]
+    """
     path = []
     iterCount = 0
     nodeList = [] #list containing all nodes
@@ -234,6 +256,18 @@ def rrt_m(a, b, maxTrial):
 
 
 def rrt_Connect(a, b, maxTrial):
+    """[summary]
+    rrt_Connect construct two trees starting from both starting and ending position, a path is found when two tree meets
+
+    Arguments:
+        a {[list]}  -- [a list of six doubles to represent the coordinate of the Node]
+        b {[list]}  -- [a list of six doubles to represent the coordinate of the Node]
+        maxTrial {[int]}  -- [maximum iterations will be executed before determines the pathfinding to be unproductive]
+
+    Returns:
+        [list] -- [the path node went through from starting point to endpoint represented as lists]
+        [boolean] -- [whether the pathfinding is productive]
+    """
     qinit = a
     qgoal = b
     print qinit
@@ -314,77 +348,47 @@ def aStar(startNode, endNode, nodeList):
                     openList.append(neighbour)
 
 
-def main():
-    testpointsset = []
-    with open('/root/mpl_example/scripts/standardset.pkl', 'rb') as f:
-        testpointsset = pickle.load(f)
-    startNode = Node(testpointsset[0][0][0],testpointsset[0][0][1],testpointsset[0][0][2],testpointsset[0][0][3],testpointsset[0][0][4],testpointsset[0][0][5])
-    endNode = Node(testpointsset[0][1][0],testpointsset[0][1][1],testpointsset[0][1][2],testpointsset[0][1][3],testpointsset[0][1][4],testpointsset[0][1][5])
+def PRMsolution(startNode, endNode, rrtiterNum, G):
     print(startNode)
-    print(endNode)
-    '''
-    nodeList = []
-    PRM(nodeList, 400, 20)
-    G=nx.Graph() 
-    G.add_nodes_from(nodeList)
-    edges = []
-    for i in nodeList:
-        for j in i.connectedNodes:
-            G.add_edge(i, j, weight = i.dist(j))
-    '''
-    with open('graph', 'rb') as k:
-        G = nx.read_gpickle(k)   
+    print(endNode)  
     #for i in G.edges:
         #print i
     print("********point generation finished... awaiting to produce subgraph results***********")
-    sub_graphs = list(nx.connected_component_subgraphs(G))
-
-    #n gives the number of sub graphs
-    n = len(sub_graphs)
-
-    # you can now loop through all nodes in each sub graph
-
-    for i in sub_graphs:
-        subGNodes = list(i.nodes)
-        if len(i) == 1 and (subGNodes[0] is not startNode or subGNodes[0] is not endNode):
-            G.remove_node(subGNodes[0])
-
-    sub_graphs = list(nx.connected_component_subgraphs(G))
-    n = len(sub_graphs)
-    for i in range(n):
-        print "Subgraph:", i, "consists of ",sub_graphs[i].nodes()
     
+    print(nx.is_connected(G))
     print("********subgraph result produced, producing connected graph, commencing rrt point connection***********")
-    G.clear()
-    nodeList = list(sub_graphs[0].nodes)
-    edgeList = list(sub_graphs[0].edges)
+    nodeList = list(G.nodes)
+    edgeList = list(G.edges)
     rrtStartTarget = Nearest(startNode, nodeList)
-    result, checker = rrt_Connect(startNode, rrtStartTarget, 5000)
+    result, checker = rrt_Connect(startNode, rrtStartTarget, rrtiterNum)
     if checker:
         for k in range(0,len(result)-1):
             temp = result[k]
             nextTemp = result[k+1]
             nodeList.append(temp)
+            nodeList.append(nextTemp)
             edgeList.append((temp,nextTemp))
     else:
-        exit("StartNode can't be traced")
+        return [],False
     rrtEndTarget = Nearest(endNode, nodeList)
-    result1, checker = rrt_Connect(endNode, rrtEndTarget, 5000)
+    result1, checker = rrt_Connect(endNode, rrtEndTarget, rrtiterNum)
     if checker:
         for k in range(0,len(result1)-1):
             temp = result1[k]
             nextTemp = result1[k+1]
             nodeList.append(temp)
+            nodeList.append(nextTemp)
             edgeList.append((temp,nextTemp))
     else:
-        exit("EndNode can't be traced")
-    print edgeList
+        return [],False
     nodeList = list(dict.fromkeys(nodeList))
     edgeList = list(dict.fromkeys(edgeList))
-    G.add_nodes_from(nodeList)
-
+    t = []
     for i in edgeList:
-        G.add_edge
+        t.append((i[0], i[1], i[0].dist(i[1])))
+    edgeList = t
+    G.add_nodes_from(nodeList)
+    G.add_weighted_edges_from(edgeList)
 
     print("********connected graph generated, is it connected?***********")
     print(nx.is_connected(G))
@@ -405,28 +409,92 @@ def main():
     print("********normalizing steps***********")
     result = steps_normalization(result, steplength)
     for i in result:
-        print i
-        path.append(i.toList())
+        if i is not None:
+            path.append(i.toList())
+
+    return path,True
 
 
-    print("********A* path generated, prepare to run simulation***********")
-    pub = rospy.Publisher('joint_states', JointState, queue_size=10)
-    rospy.init_node('talker', anonymous=True)
-    rate = rospy.Rate(5) # 10hz
-    counter = 0
-    while not rospy.is_shutdown() and counter < len(path) is not None:
-        print counter
-        a = JointState()
-        a.header.seq = counter
-        a.header.stamp = rospy.Time.now()
-        a.name = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6']
-        temp = path[counter]
-        print(temp)
-        a.position = temp
-        rospy.loginfo(a)
-        pub.publish(a)
-        rate.sleep()
-        counter+=1
+def scale(a, b, c):
+    tempMax = max(a, b, c)
+    tempMin = min(a, b, c)
+    dif = tempMax - tempMin
+    return (a-tempMin)/dif, (b-tempMin)/dif, (c-tempMin)/dif
+
+def stepEval(k):
+    if k < 50:
+        return 100
+    elif k >= 50 and k < 80:
+        return 90
+    elif k >= 80 and k < 100:
+        return 80
+    elif k >= 100 and k < 130:
+        return 70
+    elif k >= 130 and k < 150:
+        return 60
+    elif k >= 150:
+        return 50
+
+def timeEval(t):
+    if t < 0.1:
+        return 100
+    elif t >= 0.1 and t < 0.5:
+        return 90
+    elif t >= 0.5 and t < 1:
+        return 80
+    elif t >= 1 and t < 4:
+        return 70
+    elif t >= 4 and t < 8:
+        return 60
+    elif t >= 8:
+        return 50
+
+def runtestset(maxTrial,method,testset):
+    """[summary]
+    this will produce a score that evaluate the effectiveness of the pathfinding method that is running 
+
+    Arguments:
+        maxTrial {[int]}  -- [maximum iterations will be executed before determines the pathfinding to be unproductive]
+        method {[function]}  -- [which method to execute when running testset]
+        testset {[list]}  -- [which testset to use, the path of the testset]
+
+    Returns:
+        [double] -- [score that each run of testset gets]
+    """
+    testpointsset = []
+    with open(testset, 'rb') as f:
+        testpointsset = pickle.load(f)
+    with open('graph', 'rb') as k:
+        G = nx.read_gpickle(k) 
+    totaltime = 0
+    totalstep = 0
+    successfulLoopCount = 0
+    result = 0
+    routeset = []
+    datasize = len(testpointsset)
+    for i in range(0, datasize):
+        print("starting node is: " + str(testpointsset[i][0]))
+        print("end node is: " + str(testpointsset[i][1]))
+        time_start=time.time()
+        x = Node(testpointsset[i][0][0],testpointsset[i][0][1],testpointsset[i][0][2],testpointsset[i][0][3],testpointsset[i][0][4],testpointsset[i][0][5])
+        y = Node(testpointsset[i][1][0],testpointsset[i][1][1],testpointsset[i][1][2],testpointsset[i][1][3],testpointsset[i][1][4],testpointsset[i][1][5])
+        route, checker = method(x,y,maxTrial,G)
+        time_end=time.time()
+        timelapse = time_end - time_start
+
+        if not checker:
+            result += 0
+        else:
+            result = result + 50 + stepEval(len(route))* 0.25 + timeEval((timelapse)* 0.25)
+
+        result = result / datasize
+    return result*100
+
+
+def main():
+    result = runtestset(1000, PRMsolution, "standardset.pkl")
+    print result
+
 
 if __name__ == '__main__':
     try:
