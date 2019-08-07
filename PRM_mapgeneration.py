@@ -7,7 +7,6 @@ from mpl.core.trajectory_processing import trajectoryProcess
 import time
 import pickle
 import networkx as nx
-from matplotlib import pyplot as plt
 import scipy
 
 
@@ -310,13 +309,19 @@ def main():
     print(startNode)
     print(endNode)
     nodeList = []
-    PRM(nodeList, 300, 20)
+    PRM(nodeList, 400, 20)
     G=nx.Graph() 
     G.add_nodes_from(nodeList)
     edges = []
     for i in nodeList:
         for j in i.connectedNodes:
             G.add_edge(i, j, weight = i.dist(j))
+    sub_graphs = list(nx.connected_component_subgraphs(G))
+    nodeList = list(sub_graphs[0].nodes)
+    edgeList = list(sub_graphs[0].edges)
+    G.clear()
+    G.add_nodes_from(nodeList)
+    G.add_edges_from(edgeList)
     nx.write_gpickle(G, "graph")
     
 
