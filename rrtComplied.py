@@ -87,6 +87,8 @@ def printpath(a):
 
 def rrt(a, b, maxTrial):
     """[summary]
+    rrt finds a path from the given starting and ending position in given 6-D space
+    it randomly explore nodes in 6-D space
 
     Arguments:
         a {[list]}  -- [a list of six doubles to represent the coordinate of the Node]
@@ -130,6 +132,7 @@ def rrt(a, b, maxTrial):
 
 def rrt_m(a,b,maxTrial):
     """[summary]
+    similar with rrt, but it goes towards to exploring nodes until it is no longer traversable
 
     Arguments:
         a {[list]}  -- [a list of six doubles to represent the coordinate of the Node]
@@ -174,6 +177,7 @@ def rrt_m(a,b,maxTrial):
 
 def rrt_Connect(a, b, maxTrial):
     """[summary]
+    rrt_Connect construct two trees starting from both starting and ending position, a path is found when two tree meets
 
     Arguments:
         a {[list]}  -- [a list of six doubles to represent the coordinate of the Node]
@@ -231,6 +235,7 @@ def rrt_Connect(a, b, maxTrial):
     print("False")
     return result, False
 
+
 def scale(a, b, c):
     tempMax = max(a, b, c)
     tempMin = min(a, b, c)
@@ -267,11 +272,12 @@ def timeEval(t):
 
 def runtestset(maxTrial,method,testset):
     """[summary]
+    this will produce a score that evaluate the effectiveness of the pathfinding method that is running 
 
     Arguments:
         maxTrial {[int]}  -- [maximum iterations will be executed before determines the pathfinding to be unproductive]
         method {[function]}  -- [which method to execute when running testset]
-        b {[list]}  -- [which testset to use, the path of the testset]
+        testset {[list]}  -- [which testset to use, the path of the testset]
 
     Returns:
         [double] -- [score that each run of testset gets]
